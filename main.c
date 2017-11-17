@@ -35,8 +35,11 @@ void create(char * filename) {
 void print_usage() {
 	printf("Usage: \n");
 	printf("    spfs -c imagename\n");
+    printf("        create a img file\n");
 	printf("    spfs -s imagename\n");
-	printf("    spfs -i imagename filename [as name]");
+    printf("        get into the shell using imagename as disk\n");
+	printf("    spfs -i imagename filename [as name]\n");
+    printf("        insert a file into imagename\n");
 }
 int main(int argc, char *args[]) {
 	if (argc < 2) {

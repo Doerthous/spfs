@@ -1,7 +1,11 @@
 OBJ = spfs_devices.o spfs_bitmap.o spfs.o spfs_shell.o main.o
 
-spfs.exe: $(OBJ) 
-	gcc $? -o $@
+run: $(OBJ)
+ifeq ($(shell uname), Linux)
+	gcc -lm $? -o spfs
+else
+	gcc $? -o spfs.exe
+endif
 
 %.o: %.c
 	gcc -std=c99 -c $? -o $@
