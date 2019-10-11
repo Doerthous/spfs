@@ -1,5 +1,32 @@
 #include "spfs.h"
 
+
+static void set_bit(void *bitmap, int length, int i) {
+    char *p = (char *)bitmap;
+    const int byte = sizeof(char) * 8;
+    if (i < length) {
+        p[i / byte] |= (1 << (i % byte));
+    }
+}
+static void clear_bit(void *bitmap, int length, int i) {
+    char *p = (char *)bitmap;
+    const int byte = sizeof(char) * 8;
+    if (i < length) {
+        p[i / byte] &= ~(1 << (i % byte));
+    }
+}
+static int test_bit(void *bitmap, int length, int i) {
+    char *p = (char *)bitmap;
+    const int byte = sizeof(char) * 8;
+    if (i < length) {
+        int byte = sizeof(char) * 8;
+        return p[i / byte] & (1 << (i % byte));
+    }
+    return 0;
+}
+
+
+
 static void read_block(int device, int bn, char *buf) {
 	--bn;
 	read_sector(device, bn, buf);

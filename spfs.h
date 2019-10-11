@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "spfs_devices.h"
-#include "spfs_bitmap.h"
+
 
 // Block number: 1 to n, 0 for null
 // 1block = 512B

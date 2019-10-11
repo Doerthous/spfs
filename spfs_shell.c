@@ -1,5 +1,15 @@
 #include "spfs_shell.h"
 
+static int test_bit(void *bitmap, int length, int i) {
+    char *p = (char *)bitmap;
+    const int byte = sizeof(char) * 8;
+    if (i < length) {
+        int byte = sizeof(char) * 8;
+        return p[i / byte] & (1 << (i % byte));
+    }
+    return 0;
+}
+
 void shell() {
 	char buf[80];
 	char buf2[80];

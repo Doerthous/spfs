@@ -1,4 +1,4 @@
-OBJ = spfs_devices.o spfs_bitmap.o spfs.o spfs_shell.o main.o
+OBJ = spfs_devices.o spfs.o spfs_shell.o main.o
 
 run: $(OBJ)
 ifeq ($(shell uname), Linux)
