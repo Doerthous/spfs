@@ -1,4 +1,7 @@
-OBJ = spfs_devices.o spfs.o spfs_shell.o main.o
+OBJ = spdev/dev.o  spfs/spfs.o \
+		spsh/spsh.o spsh/spio.o \
+		spsh/cat.o spsh/cd.o spsh/ls.o spsh/mkdir.o \
+		spsh/mv.o spsh/pwd.o spsh/ist.o spsh/dsk.o main.o 
 
 run: $(OBJ)
 ifeq ($(shell uname), Linux)
@@ -11,4 +14,4 @@ endif
 	gcc -std=c99 -c $? -o $@
 
 clean:
-	ls | grep -v -e '.*\.[ch]' -e 'Makefile' -e '.*\.md'  | xargs rm -f
+	rm -f $(OBJ) spfs.exe
