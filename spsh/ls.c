@@ -9,10 +9,10 @@ void ls(int argc, char *args[]) {
 		int next_directory = shenv->curr_dir.child_dir;
 		while (next_directory) {
 			spfs_get_directory(&shenv->fs_sys_blk, next_directory, &dir);
-			if (dir.type) {
+			if (dir.type & FS_TYPE_DIR) {
 				printf("%-4c %-16s -\n", 'd', dir.name);
 			} 
-			else {
+			else if (dir.type & FS_TYPE_FILE) {
 				printf("%-4c %-16s %dB\n", '-', dir.name, dir.size);
 			}
 			next_directory = dir.next_directory;
@@ -21,7 +21,7 @@ void ls(int argc, char *args[]) {
 	else {
 		int old_dn = shenv->curr_dir_num;
 		int target_dn;
-		if (!(target_dn = existed(1, args[1]))) {
+		if (!(target_dn = existed(FS_TYPE_DIR, args[1]))) {
 			printf("Path %s not existed\n", args[1]);
 		}
 		else {

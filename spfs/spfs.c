@@ -27,6 +27,16 @@ static int spfs_strncmp(const char *str1, const char *str2, unsigned int n){
         spfs_strncmp((char *)(str1), (char *)(str2), (unsigned int)(n))
 #endif // SPFS_STRNCMP
 
+#ifndef SPFS_STRLEN
+static int spfs_strlen(const char *str){
+    const char *p = str;
+    while(*p++);
+    return p - 1 - str;
+}
+#define SPFS_STRLEN(str) \
+        spfs_strlen((char *)(str))
+#endif // SPFS_STRLEN
+
 #ifndef SPFS_MEMSET
 static void spfs_memset(char *mem, char val, unsigned int size) {
     for (; size; ++mem, --size) {
@@ -165,6 +175,11 @@ static void spfs_cache_flush() {
 /*
     SPFS 函数
 */
+#define SPFS_TRUNCATE(a, max) \
+            ((a) < (max) ? (a) : (max))
+#define SPFS_FILE_BLOCK_DATA_SIZE(block_size) \
+            ((block_size) - sizeof(int))
+
 void get_system_block(int device, spfs_parameter *sb) {
     read_block(device, 1, block_buffer);
     sb->device = device;
@@ -173,22 +188,20 @@ void get_system_block(int device, spfs_parameter *sb) {
 void set_system_block(spfs_parameter *sb) {
     SPFS_MEMCPY(block_buffer, sb, sizeof(spfs_parameter));
     write_block(sb->device, 1, block_buffer);
-#ifdef SPFS_USE_CACHE
+    #ifdef SPFS_USE_CACHE
     spfs_cache_flush();
-#endif // 
+    #endif // 
 }
 
 void get_directory_map_block(spfs_parameter *sb, int dmn, char *block) {
     int start = 1 + dmn;
-#ifndef SPFS_USE_CACHE
+    #ifndef SPFS_USE_CACHE
     read_block(sb->device, start, block);
-#else
+    #else
     /** cache write back */
     if (cache.dmbc_dev != sb->device || cache.dmbc_dmbn != dmn) {
         /** write cache back to device */
-        if (cache.dmbc_dirty) {
-            write_block(cache.dmbc_dev, cache.dmbc_dmbn, cache.dir_map_blk_cache);
-        }
+        spfs_cache_flush();
         /** read new block to cache */
         read_block(sb->device, start, cache.dir_map_blk_cache);
         cache.dmbc_dev = sb->device;
@@ -198,20 +211,18 @@ void get_directory_map_block(spfs_parameter *sb, int dmn, char *block) {
     /** copy to blcok */
     SPFS_MEMCPY(block, cache.dir_map_blk_cache, 
         sizeof(cache.dir_map_blk_cache));
-#endif // SPFS_USE_CACHE
+    #endif // SPFS_USE_CACHE
 }
 
 void set_directory_map_block(spfs_parameter *sb, int dmn, char *block) {
     int start = 1 + dmn;
-#ifndef SPFS_USE_CACHE
+    #ifndef SPFS_USE_CACHE
     write_block(sb->device, 1 + dmn, block);
-#else
+    #else
     /** cache write back */
     if (cache.dmbc_dev != sb->device || cache.dmbc_dmbn != dmn) {
         /** write cache back to device */
-        if (cache.dmbc_dirty) {
-            write_block(cache.dmbc_dev, cache.dmbc_dmbn, cache.dir_map_blk_cache);
-        }
+        spfs_cache_flush();
         /** cache block info */
         //write_block(sb->device, start, block);
         cache.dmbc_dev = sb->device;
@@ -222,20 +233,18 @@ void set_directory_map_block(spfs_parameter *sb, int dmn, char *block) {
     SPFS_MEMCPY(cache.dir_map_blk_cache, block, 
         sizeof(cache.dir_map_blk_cache));
     cache.dmbc_dirty = 1;
-#endif // SPFS_USE_CACHE
+    #endif // SPFS_USE_CACHE
 }
 
 void get_file_map(spfs_parameter *sb, int fmn, char *block) {
     int start = 1 + sb->directory_map_block_count + fmn;
-#ifndef SPFS_USE_CACHE
+    #ifndef SPFS_USE_CACHE
     read_block(sb->device, start, block);
-#else
+    #else
     /** cache write back */
     if (cache.fmbc_dev != sb->device || cache.fmbc_fmbn != start) {
         /** write cache back to device */
-        if (cache.fmbc_dirty) {
-            write_block(cache.fmbc_dev, cache.fmbc_fmbn, cache.file_map_blk_cache);
-        }
+        spfs_cache_flush();
         /** read new block to cache */
         read_block(sb->device, start, cache.file_map_blk_cache);
         cache.fmbc_dev = sb->device;
@@ -245,20 +254,18 @@ void get_file_map(spfs_parameter *sb, int fmn, char *block) {
     /** copy to blcok */
     SPFS_MEMCPY(block, cache.file_map_blk_cache, 
         sizeof(cache.file_map_blk_cache));
-#endif //
+    #endif //
 }
 
 void set_file_map(spfs_parameter *sb, int fmn, char *block) {
     int start = 1 + sb->directory_map_block_count + fmn;
-#ifndef SPFS_USE_CACHE
+    #ifndef SPFS_USE_CACHE
     write_block(sb->device, start, block);
-#else
+    #else
     /** cache write back */
     if (cache.fmbc_dev != sb->device || cache.fmbc_fmbn != start) {
         /** write cache back to device */
-        if (cache.fmbc_dirty) {
-            write_block(cache.fmbc_dev, cache.fmbc_fmbn, cache.file_map_blk_cache);
-        }
+        spfs_cache_flush();
         /** write data to device */
         //write_block(sb->device, start, block);
         cache.fmbc_dev = sb->device;
@@ -268,21 +275,19 @@ void set_file_map(spfs_parameter *sb, int fmn, char *block) {
     SPFS_MEMCPY(cache.file_map_blk_cache, block, 
         sizeof(cache.file_map_blk_cache));
     cache.fmbc_dirty = 1;
-#endif //
+    #endif //
 }
 
 static void get_directory_block(spfs_parameter *sb, int dn, char *block) {
     int start = 1 + sb->directory_map_block_count + 
             sb->file_map_block_count + dn;
-#ifndef SPFS_USE_CACHE
+    #ifndef SPFS_USE_CACHE
     read_block(sb->device, start, block);
-#else
+    #else
     /** cache write back */
     if (cache.dbc_dev != sb->device || cache.dbc_dbn != start) {
         /** write cache back to device */
-        if (cache.dbc_dirty) {
-            write_block(cache.dbc_dev, cache.dbc_dbn, cache.dir_blk_cache);
-        }
+        spfs_cache_flush();
         /** read new block to cache */
         read_block(sb->device, start, cache.dir_blk_cache);
         cache.dbc_dev = sb->device;
@@ -292,21 +297,19 @@ static void get_directory_block(spfs_parameter *sb, int dn, char *block) {
     /** copy to blcok */
     SPFS_MEMCPY(block, cache.dir_blk_cache, 
         sizeof(cache.dir_blk_cache));
-#endif //
+    #endif //
 }
 
 static void set_directory_block(spfs_parameter *sb, int dn, char *block) {
     int start = 1 + sb->directory_map_block_count + 
             sb->file_map_block_count + dn;
-#ifndef SPFS_USE_CACHE
+    #ifndef SPFS_USE_CACHE
     write_block(sb->device, start, block);
-#else
+    #else
     /** cache write back */
     if (cache.dbc_dev != sb->device || cache.dbc_dbn != start) {
         /** write cache back to device */
-        if (cache.dbc_dirty) {
-            write_block(cache.dbc_dev, cache.dbc_dbn, cache.dir_blk_cache);
-        }
+        spfs_cache_flush();
         /** write data to device */
         //write_block(sb->device, start, block);
         cache.dbc_dev = sb->device;
@@ -316,7 +319,7 @@ static void set_directory_block(spfs_parameter *sb, int dn, char *block) {
     SPFS_MEMCPY(cache.dir_blk_cache, block, 
         sizeof(cache.dir_blk_cache));
     cache.dbc_dirty = 1;
-#endif //
+    #endif //
 }
 
 void spfs_get_directory(spfs_parameter *sb, int dn, spfs_directory *d) {
@@ -357,7 +360,7 @@ void spfs_set_file(spfs_parameter *sb, int fn, spfs_file *f) {
  */
 int get_free_files(spfs_parameter *sb, int file_count) {
     // 获取 system block，判断剩余的 file block 是否满足 file_count
-    if (sb->free_file_count < file_count)
+    if (sb->free_file_count < file_count && file_count <= 0)
         return 0;
     int block_size = sb->block_size;
     char *file_map = block_buffer;
@@ -392,6 +395,8 @@ int get_free_files(spfs_parameter *sb, int file_count) {
         }
         if (is_file_map_updated) {
             set_file_map(sb, j+1, file_map);
+            file->next_file = 0; // 尾节点
+            spfs_set_file(sb, last_file_number, file);
         }
     }
     set_system_block(sb);
@@ -468,3 +473,333 @@ int get_file_by_filename(spfs_parameter *sb, char *fname, spfs_file *file) {
     return ret;
 }
 
+void spfs_free_file(spfs_parameter *sb, int fn, int wb) {
+    char *file_map = block_buffer;
+    int bit_count = sb->block_size * 8;
+    /** 找出 fn 所在的 file map 的编号*/
+    int fmn = (fn - 1) / bit_count;
+    int fmo = (fn - 1) % bit_count;
+    /** 获取 fm */
+    get_file_map(sb, fmn+1, file_map);
+    /** 清除位图中的对应位 */
+    if (SPFS_TEST_BIT(file_map, bit_count, fmo)) {
+        SPFS_CLEAR_BIT(file_map, bit_count, fmo);
+        /** 写回 */
+        set_file_map(sb, fmn+1, file_map);
+        /** 设置 system block */
+        ++sb->free_file_count;
+        if (wb) {
+            set_system_block(sb);
+        }
+    }
+}
+void spfs_free_directory(spfs_parameter *sb, int dn, int wb) {
+    char *directory_map = block_buffer;
+    int bit_count = sb->block_size * 8;
+    /** 找出 dn 所在的 directory map 的编号*/
+    int dmn = (dn - 1) % ((sb->block_size / DIRECTORY_SIZE) * 8);
+    int dmo = (dn - 1) / ((sb->block_size / DIRECTORY_SIZE) * 8);
+    /** 获取 dm */
+    get_directory_map_block(sb, dmn+1, directory_map);
+    /** 清除位图中的对应位 */
+    if (SPFS_TEST_BIT(directory_map, bit_count, dmo)) {
+        SPFS_CLEAR_BIT(directory_map, bit_count, dmo);
+        /** 写回 */
+        set_directory_map_block(sb, dmn+1, directory_map);
+        /** 设置 system block */
+        ++sb->free_directory_count;
+        if (wb) {
+            set_system_block(sb);
+        }
+    }
+}
+
+
+static int upint(int a, int b) { // a/b
+    int c = a/b;
+    int d = a%b;
+    if (d) {
+        ++c;
+    }
+    return c;
+}
+
+int spfs_mkfs(int device, int boot) {
+    // 获取设备容量及扇区大小
+    int sector_size = SPFS_GET_DEVICE_SECTOR_SIZE(device);
+    int sector_count = SPFS_GET_DEVICE_SECTOR_COUNT(device);
+
+    // 每 block 的 sector 数
+    // block 大小与数量
+    int sector_count_per_block = 1;
+    if (boot) {
+        --sector_count; // 预留一个扇区做引导
+    } 
+    int capacity = sector_count*sector_size;
+    int max_dir_count = (capacity/(256*1024))*32; // 256k 对应 32 个文件名
+    int block_count = sector_count/sector_count_per_block;
+    int block_size = sector_count_per_block * sector_size;
+
+    // 根据给定目录名的数量估计文件系统参数
+    int dmbc = upint(max_dir_count, 8*block_size);
+    int dbc = upint(32*max_dir_count, block_size);
+    int fmbc = upint(block_count-dmbc-dbc-1, 8*block_size);
+    int fbc = block_count - dmbc - dbc - fmbc - 1;
+    if (fmbc <= 0 || fbc <= 0) { // failed
+        return 0;
+    }
+
+    // 设置 system block 信息
+    spfs_parameter sb;
+    sb.signature[0] = 's';
+    sb.signature[1] = 'p';
+    sb.signature[2] = 'f';
+    sb.signature[3] = 's';
+    sb.has_boot_sector = 0;
+    sb.directory_count = dbc*block_size/32;             // 1024*32
+    sb.file_count = fbc;                                // 1024*64
+    sb.free_directory_count = dbc*block_size/32;
+    sb.free_file_count = fbc;
+    sb.directory_map_block_count = dmbc;                //
+    sb.file_map_block_count = fmbc;                     //
+    sb.directory_block_count = dbc;                     //
+    sb.file_block_count = fbc;                          //
+    sb.block_size = block_size;
+    sb.sector_count_per_block = sector_count_per_block;
+    sb.device = device;
+
+    // 写入 device
+    if (boot) {
+        sb.has_boot_sector = 1;
+        SPFS_WRITE_SECTOR(device, 2, (char *)&sb, sizeof(sb));
+    } else {
+        SPFS_WRITE_SECTOR(device, 1, (char *)&sb, sizeof(sb));
+    }
+
+    // 创建根目录
+    spfs_directory directory;
+    int directory_number = get_free_directory(&sb);
+    if (directory_number != 1) {
+        return 0;
+    }
+    SPFS_MEMSET(&directory, 0, sizeof(spfs_directory));
+    SPFS_MEMCPY(directory.name, "/", 1);
+    directory.type = SPFS_TYPE_DIR;
+    spfs_set_directory(&sb, directory_number, &directory);
+
+    set_system_block(&sb);
+
+    return 1;
+}
+/*
+    清空文件数据
+*/
+static int spfs_empty(spfs_parameter *sb, int dn) {
+    spfs_directory dir;
+    spfs_file *file = &file_cache;
+    spfs_get_directory(sb, dn, &dir);
+    /** 如果大小不为零则清空 */
+    if (dir.size) {
+        file->next_file = dir.file_head;
+        while (file->next_file) {
+            spfs_free_file(sb, file->next_file, 0);
+            spfs_get_file(sb, file->next_file, file);
+        }
+        /** 设置 directory */
+        dir.size = 0;
+        dir.file_head = 0;
+        spfs_set_directory(sb, dn, &dir);
+        /** 设置 system block */
+        set_system_block(sb);
+    }
+}
+int spfs_write(spfs_parameter *sb, int dn, char data[], int size, int mode) {
+    spfs_directory dir;
+    int file_count = 0;
+    int wc = 0, wsz = 0;
+    int data_size = SPFS_FILE_BLOCK_DATA_SIZE(sb->block_size);
+    int tfbfspbs = 0, tfbfspct = 0;
+    spfs_get_directory(sb, dn, &dir);
+    if (dir.type & SPFS_TYPE_FILE) {
+        if (dir.size && mode) {
+            spfs_empty(sb, dn);
+            spfs_get_directory(sb, dn, &dir);
+        }
+        /** 计算尾节点剩余的空间 */
+        if (dir.size) {
+            tfbfspbs = dir.size % data_size;
+            tfbfspct = data_size - tfbfspbs;
+            if (size > tfbfspct) {
+                size -= tfbfspct;
+            }
+            else {
+                tfbfspct = size;
+                size = 0;
+            }
+        }
+        /** 计算存放剩余数据所需的 file 数量 */
+        if (size > 0) {
+            file_count = upint(size, data_size);
+        }
+        /** 获取空闲 file 链 */
+        int file_head = get_free_files(sb, file_count);
+        /** Append */
+        if (dir.file_head) {
+            /** 获取尾节点 */
+            //spfs_get_file(sb, dir.file_head, &file_cache);
+            file_cache.next_file = dir.file_head; /**< wsz 暂存尾节点编号 */
+            while (file_cache.next_file) {
+                wsz = file_cache.next_file;
+                spfs_get_file(sb, wsz, &file_cache);
+            }
+            /** 补全尾节点，并串联新 file 链 */
+            SPFS_MEMCPY(&(file_cache.data[tfbfspbs]), &data[wc], tfbfspct);
+            wc += tfbfspct;
+            file_cache.next_file = file_head;
+            /** 写入尾节点 */
+            spfs_set_file(sb, wsz, &file_cache);   
+        }    
+        else {
+            dir.file_head = file_head;
+        }
+        /** 写入剩余数据到新 file 链 */
+        int zone_head = file_head;
+        while (zone_head && wc < size) {
+            spfs_get_file(sb, zone_head, &file_cache);
+            SPFS_MEMSET(file_cache.data, 0, data_size);
+            wsz = wc + data_size <= size ? data_size : size - wc;
+            SPFS_MEMCPY(file_cache.data, data+wc, wsz);
+            spfs_set_file(sb, zone_head, &file_cache);
+            zone_head = file_cache.next_file;
+            wc += wsz;
+        }
+        dir.size += wc;
+        spfs_set_directory(sb, dn, &dir);
+        set_system_block(sb);
+    }
+    return wc;
+}
+static int __spfs_existed(spfs_parameter *sb, int type, int cdn, char *filename) {
+    spfs_directory directory;
+    spfs_get_directory(sb, cdn, &directory);
+    if (!SPFS_STRNCMP(filename, ".", 1)) {
+        return cdn; // current
+    }
+    if (!SPFS_STRNCMP(filename, "..", 2)) {
+        if (cdn != 1) { //
+            return directory.parent_dir; // parent
+        }
+        else {
+            return cdn; // root
+        }
+    }
+    int fnlen = SPFS_STRLEN(filename);
+    for (int i = 0; i <= fnlen; ++i) {
+        if (!filename[i]) {
+            return cdn; // current for ..., ...., ....., and so on.
+        }
+        if (filename[i] != '.') {
+            break;
+        }
+    }
+    int child_dn = directory.child_dir;
+    while (child_dn) {
+        spfs_get_directory(sb, child_dn, &directory);
+        if (type & directory.type) {
+            if (!SPFS_STRNCMP(directory.name, filename, FILE_NAME_LEN)) {
+                return child_dn;
+            }
+        }
+        child_dn = directory.next_directory;
+    }
+    return 0;
+}
+int spfs_existed(spfs_parameter *sb, int type, int *cdn, char *filename) {
+    char *p = filename, *q;
+    int tdn = 0;
+    if (p[0] == '/') {
+        ++p;
+        *cdn = 1;
+        tdn = 1;
+    }
+    while (*p) {
+        for (q = p; *p && *p != '/'; ++p); 
+        if (*p) {
+            *p = 0;
+            ++p;
+        } 
+        if(!(tdn = __spfs_existed(sb, *p ? SPFS_TYPE_DIR : type, *cdn, q))) { // *p == 0 意味着到达最后一个文件
+            tdn = 0;
+            break;
+        } 
+        if (*p) {
+            *cdn = tdn;
+        }
+    }
+    for (q = filename; q != p; ++q) { // 还原 filename
+        if (!*q) {
+            *q = '/';
+        }
+    }
+    return tdn;
+}
+int spfs_open(spfs_parameter *sb, int cdn, char *filename) {
+    spfs_directory dir;
+    spfs_directory pdir;
+    int dn = spfs_existed(sb, SPFS_TYPE_FILE, &cdn, filename);
+    if (!dn) {
+        dn = get_free_directory(sb);
+        spfs_get_directory(sb, dn, &dir);
+        spfs_get_directory(sb, cdn, &pdir);
+        SPFS_MEMCPY(dir.name, filename, 
+            SPFS_TRUNCATE(SPFS_STRLEN(filename), FILE_NAME_LEN));
+        dir.size = 0;
+        dir.file_head = 0;
+        dir.parent_dir = cdn;
+        dir.type = SPFS_TYPE_FILE;
+        dir.next_directory = pdir.child_dir;
+        pdir.child_dir = dn;
+        spfs_set_directory(sb, dn, &dir);
+        spfs_set_directory(sb, cdn, &pdir);
+    }
+    return dn;
+}
+int spfs_read(spfs_parameter *sb, int dn, int offset, char data[], int size) {
+    spfs_directory dir;
+    spfs_file *file = &file_cache;
+    int block_size = sb->block_size;
+    int bfn = offset / (block_size-sizeof(int));
+    int bfo = offset % (block_size-sizeof(int));
+    int rc = 0, rsz = 0;
+    spfs_get_directory(sb, dn, &dir);
+    if ((offset > dir.size) || (dir.type & SPFS_TYPE_DIR)) {
+        return rc;
+    }
+    if (dir.size < offset + size) {
+        size = dir.size - offset;
+    }
+    file->next_file = dir.file_head;
+    while (file->next_file && rc < bfn) {
+        ++rc;
+        spfs_get_file(sb, file->next_file, file);
+    };
+    for (rc = 0; file->next_file && rc < size; ) {
+        rsz = (block_size-sizeof(int)) - bfo;
+        rsz = rc + rsz <= size ? rsz : size - rc;
+        spfs_get_file(sb, file->next_file, file);
+        SPFS_MEMCPY(data+rc, file->data+bfo, rsz);
+        rc += rsz;
+        bfo = 0;
+    }
+    return rc;
+}
+/*
+    删除文件数据
+*/
+int spfs_delete(spfs_parameter *sb, int dn) {
+    /*spfs_directory dir;
+    spfs_get_directory(sb, dn, &dir);
+    spfs_empty(sb, dn);
+    spfs_free_directory(sb, dn, 1);
+    set_system_block(sb);*/
+}

@@ -48,4 +48,6 @@ void cd(int argc, char *args[]);
 void pwd(int argc, char *args[]);
 void dsk(int argc, char *args[]);
 int ist(int argc, char *args[]);
+void echo(int argc, char *args[]);
+
 #endif // _SPFS_SHELL_H_

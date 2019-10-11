@@ -27,7 +27,8 @@
 
     以下是本文件系统的相关参数
 */
-#define MAX_BLOCK_SIZE        4096
+#define MAX_BLOCK_SIZE      4096
+#define MAX_FILE_DATA_SIZE  (MAX_BLOCK_SIZE - sizeof(int))
 
 /*
   spfs
@@ -54,12 +55,13 @@
 */
 #include "../spdev/dev.h"
 #define SPFS_READ_SECTOR(dev, sn, buf, size) \
-        read_sector((dev), (sn), (buf), (size)) 
+            read_sector((dev), (sn), (buf), (size)) 
 #define SPFS_WRITE_SECTOR(dev, sn, buf, size) \
-        write_sector((dev), (sn), (buf), (size)) 
-
-
-
+            write_sector((dev), (sn), (buf), (size))
+#define SPFS_GET_DEVICE_SECTOR_COUNT(dev) \
+            get_sector_count((dev))
+#define SPFS_GET_DEVICE_SECTOR_SIZE(dev) \
+            get_sector_size((dev))
 
 struct spfs_b { // 1block
 
@@ -85,17 +87,22 @@ typedef struct {
     int 	device;
 } spfs_parameter;
 typedef struct { // the format of directory item
-#define FILE_NAME_LEN 14 // last character for 0
     int     file_head; // 如果是目录，则指向父目录，如果是文件，则指向文件数据块的头节点。
     int     next_directory;
+    int     parent_dir;
     int     child_dir; // 子节点
     int     size;
-    char    type; // 0 for file, 1 for directory
+
+    #define SPFS_TYPE_DIR  1
+    #define SPFS_TYPE_FILE 2
+    char    type;
+
+    #define FILE_NAME_LEN 18 // last character for 0
     char    name[FILE_NAME_LEN+1];
 } spfs_directory;
 typedef struct { // the format of file item, its size is BLOCK_SIZE 
     int     next_file;              
-    char    data[MAX_BLOCK_SIZE-sizeof(int)];
+    char    data[MAX_FILE_DATA_SIZE];
 } spfs_file;
 
 
@@ -163,5 +170,14 @@ int get_directory_by_filename(spfs_parameter *sb, char *fname, spfs_directory *d
     如果file 不存在则返回 0。
  */
 int get_file_by_filename(spfs_parameter *sb, char *fname, spfs_file *f);
+
+
+int spfs_mkfs(int device, int boot);
+int spfs_existed(spfs_parameter *sb, int type, int *cdn, char *filename);
+int spfs_open(spfs_parameter *sb, int cdn, char *filename);
+#define SPFS_WRITE_APPEND   0
+#define SPFS_WRITE_REWRITE  1
+int spfs_write(spfs_parameter *sb, int dn, char data[], int size, int mode);
+int spfs_read(spfs_parameter *sb, int dn, int offset, char data[], int size);
 
 #endif // _SPFS_H_

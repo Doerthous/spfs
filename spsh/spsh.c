@@ -62,6 +62,9 @@ int command(int argc, char *args[]) {
 		else if (!strcmp(args[0], "pwd")) {
 			pwd(argc, args);
 		}
+		else if (!strcmp(args[0], "echo")) {
+			echo(argc, args);
+		}
 		else {
 			printf("%s: command not found\n", args[0]);
 			print_usage();

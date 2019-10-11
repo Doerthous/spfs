@@ -6,7 +6,7 @@ void mkdir(int argc, char *args[]) {
 
 	// 判断 path 是否存在
 	spfs_directory dir;
-	if(existed(2, args[1])) {
+	if(existed(FS_TYPE_DIR | FS_TYPE_FILE, args[1])) {
 		printf("Path %s alreadys existed\n", args[1]);
 	}
 
@@ -24,21 +24,20 @@ void mkdir(int argc, char *args[]) {
 				*end = 0;
 				++end;
 			}
-			if (tg_dn = existed(1, dirname)) {
+			if (tg_dn = existed(FS_TYPE_DIR, dirname)) {
 				shenv->ch2dir(tg_dn);
 			} 
 			else {
 				// 创建目录
 				int name_len = strlen(dirname);
-				name_len = name_len < FILE_NAME_LEN ? name_len: FILE_NAME_LEN;
 				tg_dn = get_free_directory(&shenv->fs_sys_blk);
 				memset(&dir, 0, sizeof(spfs_directory));
 				if (tg_dn) {
 					// 关联
-					dir.file_head = shenv->curr_dir_num; // 复用 file_head 关联父目录节点
+					dir.parent_dir = shenv->curr_dir_num; // 复用 file_head 关联父目录节点
 					dir.next_directory = shenv->curr_dir.child_dir;
 					shenv->curr_dir.child_dir = tg_dn;
-					dir.type = 1;
+					dir.type = FS_TYPE_DIR;
 					memcpy(dir.name, dirname, name_len);
 					dir.name[name_len] = 0;
 					spfs_set_directory(&shenv->fs_sys_blk, tg_dn, &dir);
