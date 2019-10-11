@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "spsh/spsh.h"
+#include "spdev/vdev.h"
 
 int upint(int a, int b) { // a/b
 	int c = a/b;
@@ -87,7 +88,7 @@ void print_usage() {
     printf("        insert file to imagename\n");
     printf("    spfs -s imagename\n");
     printf("        shell\n\n");
-    printf("    type: DTS1, W25Q16\n");
+    printf("    type: DTS1, W25Q16, W25Q64\n");
 }
 
 int main(int argc, char *args[]) {
@@ -100,11 +101,15 @@ int main(int argc, char *args[]) {
 		}
 		else {
 			if (!strncmp(args[2], "DTS1", 4)) {
-				create_device(args[3], 512, 32*1024);
+				create_vdevice(args[3], 512, 32*1024);
 				printf("%s has created\n", args[3]);
 			} 
 			else if (!strncmp(args[2], "W25Q16", 6)) {
-				create_device(args[3], 4096, 512);
+				create_vdevice(args[3], 4096, 512);
+				printf("%s has created\n", args[3]);
+			}
+			else if (!strncmp(args[2], "W25Q64", 6)) {
+				create_vdevice(args[3], 4096, 2048);
 				printf("%s has created\n", args[3]);
 			}
 			else {
@@ -126,10 +131,10 @@ int main(int argc, char *args[]) {
 			print_usage();
 			return 0;
 		}
-		int d = open_device(img);
+		int d = open_vdevice(img);
 		if (d != DEVICE_OPEN_FAILED) {
 			mkspfs(d, b);
-			close_device(d);
+			close_vdevice(d);
 		}
 		else {
 			//
@@ -137,7 +142,7 @@ int main(int argc, char *args[]) {
 	}
 	else if (!strcmp(args[1], "-i")) { // spfs -i imagename filename [newname]
 		if (argc > 3) {
-			int d = open_device(args[2]);
+			int d = open_vdevice(args[2]);
 			if (d != DEVICE_OPEN_FAILED) {
 				spfs_parameter sb;
 				shell_env *sh_env = get_shell_env();
@@ -145,7 +150,7 @@ int main(int argc, char *args[]) {
 				sh_env->ch2root();
 				ist(argc-2, args+2);
 				set_system_block(&sh_env->fs_sys_blk);
-				close_device(d);
+				close_vdevice(d);
 			}
 			else {
 				printf("Open device %s failed!\n", args[2]);
@@ -157,10 +162,10 @@ int main(int argc, char *args[]) {
 	}
 	else if (!strcmp(args[1], "-s")) { // spfs -d imagename
 		if (argc == 3) {
-			int d = open_device(args[2]);
+			int d = open_vdevice(args[2]);
 			if (d != DEVICE_OPEN_FAILED) {
 				shell(d);
-				close_device(d);
+				close_vdevice(d);
 			}
 			else {
 				printf("Open device %s failed!\n", args[2]);

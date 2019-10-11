@@ -12,8 +12,31 @@ typedef struct {
 	void (*ch2root)();
 } shell_env;
 
-void shell(int device);
+
 shell_env *get_shell_env();
+
+void shell(int device);
+
+/*static void set_to_dir(int target_dn);
+static void set_to_root_dir();
+
+shell_env sh_env = {
+	.ch2dir = set_to_dir,
+	.ch2root = set_to_root_dir,
+};
+
+static void set_to_dir(int target_dn) {
+	spfs_get_directory(&sh_env.fs_sys_blk, target_dn, &sh_env.curr_dir);
+	sh_env.curr_dir_num = target_dn;
+}
+static void set_to_root_dir() {
+	set_to_dir(1);
+}
+
+
+shell_env *get_shell_env() {
+	return &sh_env;
+}*/
 
 // commands
 void ls(int argc, char *args[]);

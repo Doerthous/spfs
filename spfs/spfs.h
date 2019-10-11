@@ -1,67 +1,65 @@
 #ifndef _SPFS_H_
 #define _SPFS_H_
 
-#include <stdio.h>
-#include <string.h>
-#include "../spdev/dev.h"
-
-// block number >= 1
-//#define BLOCK_SIZE DEVICE_SECTOR_SIZE
-#define MAX_BOOT_BLOCK_COUNT  10
-#define MAX_BLOCK_SIZE        4096
-//#define DIRECTORY_COUNT_PER_BLOCK   (BLOCK_SIZE/DIRECTORY_SIZE)
 /*
-    The first dev (block size: 512 B)
+    spfs
+    本系统在存储设备中的结构图如下：
 
     block number    block name       block count
                 _____________________
         1      |                     |
-               |     boot block      | 1 block
-               |_____________________|
-        2      |                     |
-               |    system block     | 1 block
-               |_____________________|
-        3      |                     | 
-               | directory map block | 8 block
-        10     |_____________________|
-        11     |                     |
-               |   file map block    | 16 block
-        26     |_____________________|
-        27     |                     |
-               |   directory block   | 2048 block 
-        2074   |_____________________|
-        2075   |                     |
-               |     file block      | 65536 block
-        67610  |_____________________|
-
-    67610 block = 67610 * 512 B = 33805 KB = 33 MB
-*/
-
-
-/*
-    The W25Q16 flash (block size: 4096 B)
-
-    block number    block name       block count
-                _____________________
-        1      |                     |
-               |    system block     | 1 block
+               |    system block     | 1   blocks
                |_____________________|
         2      |                     | 
-               | directory map block | 1 block
+               | directory map block | a-2 blocks
                |_____________________|
-        3      |                     |
-               |   file map block    | 1 block
+        a      |                     |
+               |   file map block    | b-a blocks
                |_____________________|
-        4      |                     |
-               |   directory block   | 1 block 
+        b      |                     |
+               |   directory block   | c-b blocks
                |_____________________|
-        5      |                     |
-               |     file block      | 508 block
-        512    |_____________________|
+        c      |                     |
+               |     file block      | c-d blocks
+        d-1    |_____________________|
 
-   512 block = 512 * 4096 B = 2048 KB = 2 MB
+        注：block 编号从 1 开始计数。
 
+    以下是本文件系统的相关参数
 */
+#define MAX_BLOCK_SIZE        4096
+
+/*
+  spfs
+    本文件系统使用了如下的宏定义函数
+        SPFS_MEMSET
+        SPFS_MEMCPY
+        SPFS_STRNCMP
+        SPFS_SET_BIT
+        SPFS_CLEAR_BIT
+        SPFS_TEST_BIT
+    若上述函数无定义则使用本项目中默认的函数，具体实现在 spfs.c 中。
+*/
+//#define SPFS_MEMSET(mem, val, size)
+//#define SPFS_MEMCPY(dest, src, size)
+//#define SPFS_STRNCMP(str1, str2, n)
+//#define SPFS_SET_BIT(bm, len, i)
+//#define SPFS_CLEAR_BIT(bm, len, i)
+//#define SPFS_TEST_BIT(bm, len, i)
+
+/*
+    此处将硬盘抽象，请定义如下宏函数
+        int SPFS_READ_SECTOR(int device, int sector_number, int buffer, int size)
+        int SPFS_WRITE_SECTOR(int device, int sector_number, int buffer, int size) 
+*/
+#include "../spdev/dev.h"
+#define SPFS_READ_SECTOR(dev, sn, buf, size) \
+        read_sector((dev), (sn), (buf), (size)) 
+#define SPFS_WRITE_SECTOR(dev, sn, buf, size) \
+        write_sector((dev), (sn), (buf), (size)) 
+
+
+
 
 struct spfs_b { // 1block
 

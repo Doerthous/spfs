@@ -1,4 +1,4 @@
-OBJ = spdev/dev.o  spfs/spfs.o \
+OBJ = spdev/dev.o spdev/vdev.o  spfs/spfs.o \
 		spsh/spsh.o spsh/spio.o \
 		spsh/cat.o spsh/cd.o spsh/ls.o spsh/mkdir.o \
 		spsh/mv.o spsh/pwd.o spsh/ist.o spsh/dsk.o main.o 

@@ -25,13 +25,10 @@ static void print_usage() {
 	printf("usable commands: \n");
 	printf("    ist filename [new filename]\n");
 	printf("    ls [path]\n");
-	printf("    cat filename\n");
-	printf("    mv filename filename\n");
-	printf("    dsk\n");
-	printf("    exit\n");
-    printf("    cd\n");
-    printf("    mkdir\n");
-    printf("    pwd\n");
+	printf("    cat filename \n");
+	printf("    mv filename filename \n");
+	printf("    dsk \n");
+	printf("    exit \n");
 }
 int command(int argc, char *args[]) {
 	if (argc <= 0) {
